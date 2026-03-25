@@ -465,9 +465,12 @@
 </div>
 
 <script>
-/* ════════════════════════════════════════════════
-   UTILITIES
-════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   APIS USED (all CORS-enabled, no auth required)
+   • https://api.ipify.org          — raw IP detection (unlimited)
+   • https://ipwho.is/{ip}          — geo + ASN enrichment (10k/mo free)
+   • https://dns.google/resolve     — DNS over HTTPS (generous)
+═══════════════════════════════════════════════════════════════ */
 const $ = id => document.getElementById(id);
 
 function showLoading(el) {
@@ -495,9 +498,7 @@ function dataCard(title, dotClass, rows) {
   </div>`;
 }
 
-/* ════════════════════════════════════════════════
-   TAB SWITCHING
-════════════════════════════════════════════════ */
+/* ── TAB SWITCHING ── */
 function switchTab(tab) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -505,40 +506,51 @@ function switchTab(tab) {
   event.currentTarget.classList.add('active');
 }
 
+/* ── FLAG EMOJI ── */
+function flagEmoji(code) {
+  if (!code || code.length !== 2) return '';
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E0 + c.charCodeAt(0) - 65));
+}
+
+/* ── GEO HELPER — ipwho.is ── */
+async function geoLookup(ip) {
+  const r = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`);
+  const d = await r.json();
+  if (!d.success) throw new Error(d.message || 'IP not found');
+  return d;
+}
+
 /* ════════════════════════════════════════════════
-   MY IP — auto-detect on load
+   MY IP
 ════════════════════════════════════════════════ */
 async function loadMyIP() {
   try {
-    const r = await fetch('https://ipapi.co/json/');
-    const d = await r.json();
+    // api.ipify.org: tiny service, CORS ✅, no rate limit, returns {"ip":"x.x.x.x"}
+    const ipRes = await fetch('https://api.ipify.org?format=json');
+    const { ip } = await ipRes.json();
     const ipEl = $('myIpVal');
     ipEl.classList.remove('loading');
-    ipEl.textContent = d.ip || '—';
+    ipEl.textContent = ip;
+    $('ipInput').value = ip;
 
-    const meta = [
-      ['Country', d.country_name ? `<span class="flag">${flagEmoji(d.country_code)}</span> ${d.country_name}` : '—'],
-      ['City', d.city || '—'],
-      ['ISP', d.org || '—'],
-      ['Timezone', d.timezone || '—'],
-    ];
+    // ipwho.is: full CORS support, Access-Control-Allow-Origin: *
+    const d = await geoLookup(ip);
+    const isp  = d.connection?.isp || d.connection?.org || '—';
+    const flag = d.flag?.emoji || flagEmoji(d.country_code);
 
-    $('myIpMeta').innerHTML = meta.map(([k,v]) => `
+    $('myIpMeta').innerHTML = [
+      ['Country',  `<span class="flag">${flag}</span> ${d.country || '—'}`],
+      ['City',     d.city || '—'],
+      ['ISP',      isp],
+      ['Timezone', d.timezone?.id || '—'],
+    ].map(([k,v]) => `
       <div class="ip-meta-item">
         <span class="k">${k}</span>
         <span class="v">${v}</span>
       </div>`).join('');
-
-    // Pre-fill IP lookup
-    $('ipInput').value = d.ip;
   } catch(e) {
     $('myIpVal').textContent = 'Unavailable';
   }
-}
-
-function flagEmoji(code) {
-  if (!code || code.length !== 2) return '';
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E0 + c.charCodeAt(0) - 65));
 }
 
 /* ════════════════════════════════════════════════
@@ -550,25 +562,27 @@ async function lookupIP() {
   const el = $('ipResult');
   showLoading(el);
   try {
-    const r = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`);
-    const d = await r.json();
-    if (d.error) throw new Error(d.reason || 'Invalid IP');
+    const d = await geoLookup(ip);
+    const flag = d.flag?.emoji || flagEmoji(d.country_code);
+    const asn  = d.connection?.asn ? 'AS' + d.connection.asn : '—';
 
     el.innerHTML = dataCard('IP Intelligence — ' + d.ip, 'dot-cyan', [
-      ['IP Address',    d.ip],
-      ['Version',       d.version],
-      ['Country',       d.country_name ? `${flagEmoji(d.country_code)} ${d.country_name} (${d.country_code})` : '—'],
-      ['Region',        d.region || '—'],
-      ['City',          d.city || '—'],
-      ['Postal Code',   d.postal || '—'],
-      ['Latitude',      d.latitude ?? '—'],
-      ['Longitude',     d.longitude ?? '—'],
-      ['Timezone',      d.timezone || '—'],
-      ['UTC Offset',    d.utc_offset || '—'],
-      ['Currency',      d.currency_name ? `${d.currency_name} (${d.currency})` : '—'],
-      ['ISP / Org',     d.org || '—'],
-      ['ASN',           d.asn || '—'],
-      ['Network',       d.network || '—'],
+      ['IP Address',   d.ip],
+      ['Type',         d.type || '—'],
+      ['Country',      d.country ? `${flag} ${d.country} (${d.country_code})` : '—'],
+      ['Region',       d.region ? `${d.region} (${d.region_code})` : '—'],
+      ['City',         d.city || '—'],
+      ['Postal Code',  d.postal || '—'],
+      ['Latitude',     d.latitude ?? '—'],
+      ['Longitude',    d.longitude ?? '—'],
+      ['Timezone',     d.timezone?.id || '—'],
+      ['UTC Offset',   d.timezone?.utc || '—'],
+      ['Calling Code', d.calling_code || '—'],
+      ['Capital',      d.capital || '—'],
+      ['ISP',          d.connection?.isp || '—'],
+      ['Organisation', d.connection?.org || '—'],
+      ['ASN',          asn],
+      ['Domain',       d.connection?.domain || '—'],
     ]) + mapLink(d.latitude, d.longitude);
   } catch(e) {
     showError(el, e.message || 'Lookup failed.');
@@ -576,12 +590,12 @@ async function lookupIP() {
 }
 
 function mapLink(lat, lon) {
-  if (!lat || !lon) return '';
+  if (lat == null || lon == null) return '';
   return `<div class="map-wrap">
     <a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=10/${lat}/${lon}"
        target="_blank" rel="noopener"
        style="color:var(--cyan-dim);text-decoration:none;letter-spacing:.1em;font-size:.75rem;">
-      ↗ Open on OpenStreetMap  (${lat.toFixed(4)}, ${lon.toFixed(4)})
+      ↗ Open on OpenStreetMap  (${(+lat).toFixed(4)}, ${(+lon).toFixed(4)})
     </a>
   </div>`;
 }
@@ -589,11 +603,11 @@ function mapLink(lat, lon) {
 $('ipInput').addEventListener('keydown', e => e.key === 'Enter' && lookupIP());
 
 /* ════════════════════════════════════════════════
-   DNS LOOKUP
+   DNS LOOKUP  — Google DoH  (CORS ✅, no auth)
 ════════════════════════════════════════════════ */
 const DNS_TYPES = ['A','AAAA','MX','TXT','NS','CNAME','SOA','CAA','SRV','PTR'];
-const TYPE_NUM = {A:1,NS:2,CNAME:5,SOA:6,PTR:12,MX:15,TXT:16,AAAA:28,CAA:257,SRV:33};
-const NUM_TYPE = Object.fromEntries(Object.entries(TYPE_NUM).map(([k,v])=>[v,k]));
+const TYPE_NUM  = {A:1,NS:2,CNAME:5,SOA:6,PTR:12,MX:15,TXT:16,AAAA:28,CAA:257,SRV:33};
+const NUM_TYPE  = Object.fromEntries(Object.entries(TYPE_NUM).map(([k,v])=>[v,k]));
 
 let allDnsRecords = [];
 let activeDnsFilter = 'ALL';
@@ -614,7 +628,7 @@ async function lookupDNS() {
       )
     );
 
-    results.forEach((res, i) => {
+    results.forEach(res => {
       if (res.status === 'fulfilled' && res.value.Answer) {
         res.value.Answer.forEach(rec => {
           allDnsRecords.push({ type: NUM_TYPE[rec.type] || rec.type, ttl: rec.TTL, value: rec.data });
@@ -623,7 +637,7 @@ async function lookupDNS() {
     });
 
     if (allDnsRecords.length === 0) {
-      el.innerHTML = `<div class="result-card"><div class="status-msg">No DNS records found for <strong>${domain}</strong>.</div></div>`;
+      el.innerHTML = `<div class="result-card"><div class="status-msg">No DNS records found for <strong>${escHtml(domain)}</strong>.</div></div>`;
       return;
     }
 
@@ -652,13 +666,13 @@ function renderDNSTable(domain, el) {
     : allDnsRecords.filter(r => r.type === activeDnsFilter);
 
   if (filtered.length === 0) {
-    el.innerHTML = `<div class="result-card"><div class="status-msg">No ${activeDnsFilter} records found.</div></div>`;
+    el.innerHTML = `<div class="result-card"><div class="status-msg">No ${escHtml(activeDnsFilter)} records found.</div></div>`;
     return;
   }
 
   const rows = filtered.map(r => `
     <tr>
-      <td>${r.type}</td>
+      <td>${escHtml(String(r.type))}</td>
       <td>${r.ttl}s</td>
       <td>${escHtml(r.value)}</td>
     </tr>`).join('');
@@ -684,10 +698,8 @@ async function lookupRDNS() {
   showLoading(el);
 
   try {
-    // Build PTR name
     let ptrName;
     if (ip.includes(':')) {
-      // IPv6
       const expanded = expandIPv6(ip);
       ptrName = expanded.replace(/:/g,'').split('').reverse().join('.') + '.ip6.arpa';
     } else {
@@ -696,26 +708,31 @@ async function lookupRDNS() {
 
     const [ptrRes, geoRes] = await Promise.allSettled([
       fetch(`https://dns.google/resolve?name=${encodeURIComponent(ptrName)}&type=PTR`).then(r => r.json()),
-      fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`).then(r => r.json()),
+      geoLookup(ip),
     ]);
 
-    const ptrData = ptrRes.status === 'fulfilled' ? ptrRes.value : null;
-    const geo     = geoRes.status === 'fulfilled' ? geoRes.value : null;
-
+    const ptrData  = ptrRes.status === 'fulfilled' ? ptrRes.value : null;
+    const geo      = geoRes.status === 'fulfilled' ? geoRes.value : null;
     const hostnames = ptrData?.Answer?.map(a => a.data).filter(Boolean) || [];
 
     const rows = [
-      ['IP Address',  ip],
-      ['PTR Name',    ptrName],
-      ['Hostnames',   hostnames.length ? hostnames.join('<br>') : '<span style="color:var(--text-dim)">No PTR record</span>', hostnames.length ? 'val-good' : ''],
+      ['IP Address', ip],
+      ['PTR Name',   ptrName],
+      ['Hostnames',  hostnames.length
+        ? hostnames.map(h => escHtml(h)).join('<br>')
+        : '<span style="color:var(--text-dim)">No PTR record found</span>',
+        hostnames.length ? 'val-good' : ''],
     ];
 
-    if (geo && !geo.error) {
+    if (geo) {
+      const flag = geo.flag?.emoji || flagEmoji(geo.country_code);
+      const asn  = geo.connection?.asn ? 'AS' + geo.connection.asn : '—';
       rows.push(
-        ['ISP / Org',  geo.org || '—'],
-        ['Country',    geo.country_name ? `${flagEmoji(geo.country_code)} ${geo.country_name}` : '—'],
-        ['Network',    geo.network || '—'],
-        ['ASN',        geo.asn || '—'],
+        ['ISP',     geo.connection?.isp || '—'],
+        ['Org',     geo.connection?.org || '—'],
+        ['Country', geo.country ? `${flag} ${geo.country}` : '—'],
+        ['ASN',     asn],
+        ['Domain',  geo.connection?.domain || '—'],
       );
     }
 
@@ -726,10 +743,9 @@ async function lookupRDNS() {
 }
 
 function expandIPv6(ip) {
-  // minimal IPv6 expander
-  let parts = ip.split('::');
-  let left = parts[0] ? parts[0].split(':') : [];
-  let right = parts[1] ? parts[1].split(':') : [];
+  const parts = ip.split('::');
+  const left  = parts[0] ? parts[0].split(':') : [];
+  const right = parts[1] ? parts[1].split(':') : [];
   while (left.length + right.length < 8) left.push('0000');
   return [...left, ...right].map(p => p.padStart(4,'0')).join(':');
 }
@@ -746,37 +762,56 @@ async function lookupWhois() {
   showLoading(el);
 
   try {
-    let url;
+    // ipwho.is accepts IP addresses; for ASN queries we strip "AS" and note the limitation
     const isASN = /^AS\d+$/i.test(q);
+    let d;
+
     if (isASN) {
-      url = `https://ipapi.co/${q}/json/`;
-    } else {
-      url = `https://ipapi.co/${encodeURIComponent(q)}/json/`;
+      // ipwho.is doesn't support ASN-only lookups; use rdap.arin.net as JSON source
+      const asnNum = q.replace(/^AS/i, '');
+      const r = await fetch(`https://rdap.arin.net/registry/autnum/${asnNum}`, {
+        headers: { Accept: 'application/rdap+json' }
+      });
+      const raw = await r.json();
+      // Normalise RDAP response into a display-friendly format
+      const name  = raw.name || '—';
+      const handle = raw.handle || q.toUpperCase();
+      const country = (raw.entities?.[0]?.vcardArray?.[1] || []).find(f => f[0]==='adr')?.[1]?.['country-name'] || '—';
+      const notices = (raw.remarks || []).map(rem => rem.description?.join(' ')).filter(Boolean).join(' | ') || '—';
+      el.innerHTML = dataCard('ASN Info — ' + handle, 'dot-cyan', [
+        ['ASN Handle',   handle],
+        ['Name',         name],
+        ['Type',         raw.type || '—'],
+        ['Country',      country],
+        ['Start AS',     raw.startAutnum ?? '—'],
+        ['End AS',       raw.endAutnum ?? '—'],
+        ['Last Changed', raw.events?.find(e => e.eventAction === 'last changed')?.eventDate?.slice(0,10) || '—'],
+        ['Registration', raw.events?.find(e => e.eventAction === 'registration')?.eventDate?.slice(0,10) || '—'],
+        ['Remarks',      notices],
+      ]);
+      return;
     }
 
-    const r = await fetch(url);
-    const d = await r.json();
-    if (d.error) throw new Error(d.reason || 'Not found');
+    d = await geoLookup(q);
+    const flag = d.flag?.emoji || flagEmoji(d.country_code);
+    const asn  = d.connection?.asn ? 'AS' + d.connection.asn : '—';
 
-    el.innerHTML = dataCard(
-      isASN ? 'ASN Info — ' + q.toUpperCase() : 'Network Info — ' + q,
-      'dot-cyan',
-      [
-        ['Query',         q],
-        ['ASN',           d.asn || '—'],
-        ['Organization',  d.org || '—'],
-        ['Network',       d.network || '—'],
-        ['Country',       d.country_name ? `${flagEmoji(d.country_code)} ${d.country_name} (${d.country_code})` : '—'],
-        ['Continent',     d.continent_code || '—'],
-        ['Country Capital', d.country_capital || '—'],
-        ['Country Area',  d.country_area ? d.country_area.toLocaleString() + ' km²' : '—'],
-        ['Country Population', d.country_population ? (+d.country_population).toLocaleString() : '—'],
-        ['Country TLD',   d.country_tld || '—'],
-        ['Country Calling Code', d.country_calling_code || '—'],
-        ['IP Version',    d.version || '—'],
-        ['IP',            d.ip || '—'],
-      ]
-    );
+    el.innerHTML = dataCard('Network Info — ' + q, 'dot-cyan', [
+      ['Query',        q],
+      ['IP',           d.ip],
+      ['Type',         d.type || '—'],
+      ['ASN',          asn],
+      ['ISP',          d.connection?.isp || '—'],
+      ['Organisation', d.connection?.org || '—'],
+      ['Domain',       d.connection?.domain || '—'],
+      ['Country',      d.country ? `${flag} ${d.country} (${d.country_code})` : '—'],
+      ['Continent',    d.continent || '—'],
+      ['Capital',      d.capital || '—'],
+      ['Calling Code', d.calling_code || '—'],
+      ['Currency',     d.currency?.name ? `${d.currency.name} (${d.currency.code})` : '—'],
+      ['Timezone',     d.timezone?.id || '—'],
+      ['UTC Offset',   d.timezone?.utc || '—'],
+    ]);
   } catch(e) {
     showError(el, e.message || 'Query failed.');
   }
@@ -784,9 +819,7 @@ async function lookupWhois() {
 
 $('whoisInput').addEventListener('keydown', e => e.key === 'Enter' && lookupWhois());
 
-/* ════════════════════════════════════════════════
-   HELPERS
-════════════════════════════════════════════════ */
+/* ── HELPERS ── */
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
