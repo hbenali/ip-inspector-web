@@ -464,41 +464,64 @@
 
 </div>
 
+
 <script>
 /* ═══════════════════════════════════════════════════════════════
-   APIS USED (all CORS-enabled, no auth required)
-   • https://api.ipify.org          — raw IP detection (unlimited)
-   • https://ipwho.is/{ip}          — geo + ASN enrichment (10k/mo free)
-   • https://dns.google/resolve     — DNS over HTTPS (generous)
+   SINGLE API: https://dns.google/resolve  (CORS ✅, no auth, no limits)
+   Techniques used:
+     • My IP      → TXT o-o.myaddr.l.google.com  (Google IP-echo)
+     • IP Lookup  → PTR + Cymru ASN TXT
+     • DNS        → any record type via DoH
+     • Reverse    → PTR via DoH
+     • ASN        → Team Cymru TXT via DoH
 ═══════════════════════════════════════════════════════════════ */
+
 const $ = id => document.getElementById(id);
 
+/* ── DNS helper ── */
+async function dnsQuery(name, type) {
+  const url = `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`DNS query failed (${r.status})`);
+  return r.json();
+}
+
+/* ── UI helpers ── */
 function showLoading(el) {
   el.innerHTML = `<div class="result-card">
-    <div class="status-msg"><span class="loader"></span>Querying…</div>
+    <div class="status-msg"><span class="loader"></span>Querying DNS…</div>
   </div>`;
 }
 
 function showError(el, msg) {
   el.innerHTML = `<div class="result-card">
     <div class="result-card-header"><div class="dot dot-red"></div>Error</div>
-    <div class="error-msg">${msg}</div>
+    <div class="error-msg">${escHtml(msg)}</div>
   </div>`;
 }
 
 function dataCard(title, dotClass, rows) {
-  const rowsHTML = rows.map(([k,v,cls]) => `
+  const html = rows.map(([k, v, cls]) => `
     <div class="data-row">
-      <div class="dk">${k}</div>
-      <div class="dv${cls ? ' '+cls : ''}">${v ?? '—'}</div>
+      <div class="dk">${escHtml(k)}</div>
+      <div class="dv${cls ? ' ' + cls : ''}">${v ?? '—'}</div>
     </div>`).join('');
   return `<div class="result-card">
     <div class="result-card-header"><div class="dot ${dotClass}"></div>${title}</div>
-    <div class="data-grid">${rowsHTML}</div>
+    <div class="data-grid">${html}</div>
   </div>`;
 }
 
-/* ── TAB SWITCHING ── */
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function flagEmoji(code) {
+  if (!code || code.length !== 2) return '';
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E0 + c.charCodeAt(0) - 65));
+}
+
+/* ── Tab switching ── */
 function switchTab(tab) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -506,55 +529,72 @@ function switchTab(tab) {
   event.currentTarget.classList.add('active');
 }
 
-/* ── FLAG EMOJI ── */
-function flagEmoji(code) {
-  if (!code || code.length !== 2) return '';
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E0 + c.charCodeAt(0) - 65));
+/* ── Helpers ── */
+function reverseIP(ip) {
+  return ip.split('.').reverse().join('.');
 }
 
-/* ── GEO HELPER — ipwho.is ── */
-async function geoLookup(ip) {
-  const r = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`);
-  const d = await r.json();
-  if (!d.success) throw new Error(d.message || 'IP not found');
-  return d;
+/* Parse Cymru TXT: "15169 | 8.8.8.0/24 | US | arin | 1992-12-01" */
+function parseCymru(txt) {
+  if (!txt) return null;
+  const clean = txt.replace(/"/g, '').trim();
+  const parts = clean.split('|').map(s => s.trim());
+  return {
+    asn:      parts[0] ? 'AS' + parts[0] : null,
+    prefix:   parts[1] || null,
+    country:  parts[2] || null,
+    registry: parts[3] || null,
+    date:     parts[4] || null,
+  };
 }
 
 /* ════════════════════════════════════════════════
-   MY IP
+   MY IP  —  TXT o-o.myaddr.l.google.com
+   Google's own authoritative IP-echo DNS record.
+   Returns the querying client's IP in the TXT RR.
 ════════════════════════════════════════════════ */
 async function loadMyIP() {
   try {
-    // api.ipify.org: tiny service, CORS ✅, no rate limit, returns {"ip":"x.x.x.x"}
-    const ipRes = await fetch('https://api.ipify.org?format=json');
-    const { ip } = await ipRes.json();
+    const data = await dnsQuery('o-o.myaddr.l.google.com', 'TXT');
+    // Answer[0].data is like "\"1.2.3.4\""
+    const raw = data?.Answer?.[0]?.data ?? '';
+    const ip  = raw.replace(/"/g, '').trim();
+
+    if (!ip) throw new Error('No answer');
+
     const ipEl = $('myIpVal');
     ipEl.classList.remove('loading');
     ipEl.textContent = ip;
-    $('ipInput').value = ip;
+    $('ipInput').value  = ip;
+    $('rdnsInput').value = ip;
 
-    // ipwho.is: full CORS support, Access-Control-Allow-Origin: *
-    const d = await geoLookup(ip);
-    const isp  = d.connection?.isp || d.connection?.org || '—';
-    const flag = d.flag?.emoji || flagEmoji(d.country_code);
+    // Enrich: PTR + ASN
+    const [ptrData, asnData] = await Promise.allSettled([
+      dnsQuery(reverseIP(ip) + '.in-addr.arpa', 'PTR'),
+      dnsQuery(reverseIP(ip) + '.origin.asn.cymru.com', 'TXT'),
+    ]);
+
+    const ptr = ptrData.value?.Answer?.[0]?.data?.replace(/\.$/, '') || '—';
+    const cymru = parseCymru(asnData.value?.Answer?.[0]?.data);
 
     $('myIpMeta').innerHTML = [
-      ['Country',  `<span class="flag">${flag}</span> ${d.country || '—'}`],
-      ['City',     d.city || '—'],
-      ['ISP',      isp],
-      ['Timezone', d.timezone?.id || '—'],
-    ].map(([k,v]) => `
+      ['PTR / Hostname', escHtml(ptr)],
+      ['ASN',            escHtml(cymru?.asn || '—')],
+      ['Prefix',         escHtml(cymru?.prefix || '—')],
+      ['Country',        cymru?.country ? `${flagEmoji(cymru.country)} ${cymru.country}` : '—'],
+    ].map(([k, v]) => `
       <div class="ip-meta-item">
         <span class="k">${k}</span>
         <span class="v">${v}</span>
       </div>`).join('');
-  } catch(e) {
+  } catch (e) {
+    $('myIpVal').classList.remove('loading');
     $('myIpVal').textContent = 'Unavailable';
   }
 }
 
 /* ════════════════════════════════════════════════
-   IP LOOKUP
+   IP LOOKUP  —  PTR + Cymru ASN
 ════════════════════════════════════════════════ */
 async function lookupIP() {
   const ip = $('ipInput').value.trim();
@@ -562,54 +602,47 @@ async function lookupIP() {
   const el = $('ipResult');
   showLoading(el);
   try {
-    const d = await geoLookup(ip);
-    const flag = d.flag?.emoji || flagEmoji(d.country_code);
-    const asn  = d.connection?.asn ? 'AS' + d.connection.asn : '—';
+    const reversed = ip.includes(':')
+      ? expandIPv6(ip).replace(/:/g,'').split('').reverse().join('.') + '.ip6.arpa'
+      : reverseIP(ip) + '.in-addr.arpa';
 
-    el.innerHTML = dataCard('IP Intelligence — ' + d.ip, 'dot-cyan', [
-      ['IP Address',   d.ip],
-      ['Type',         d.type || '—'],
-      ['Country',      d.country ? `${flag} ${d.country} (${d.country_code})` : '—'],
-      ['Region',       d.region ? `${d.region} (${d.region_code})` : '—'],
-      ['City',         d.city || '—'],
-      ['Postal Code',  d.postal || '—'],
-      ['Latitude',     d.latitude ?? '—'],
-      ['Longitude',    d.longitude ?? '—'],
-      ['Timezone',     d.timezone?.id || '—'],
-      ['UTC Offset',   d.timezone?.utc || '—'],
-      ['Calling Code', d.calling_code || '—'],
-      ['Capital',      d.capital || '—'],
-      ['ISP',          d.connection?.isp || '—'],
-      ['Organisation', d.connection?.org || '—'],
-      ['ASN',          asn],
-      ['Domain',       d.connection?.domain || '—'],
-    ]) + mapLink(d.latitude, d.longitude);
-  } catch(e) {
+    const cymruName = ip.includes(':')
+      ? expandIPv6(ip).replace(/:/g,'').split('').reverse().join('.') + '.origin6.asn.cymru.com'
+      : reverseIP(ip) + '.origin.asn.cymru.com';
+
+    const [ptrRes, asnRes] = await Promise.allSettled([
+      dnsQuery(reversed, 'PTR'),
+      dnsQuery(cymruName, 'TXT'),
+    ]);
+
+    const ptrs   = ptrRes.value?.Answer?.map(a => a.data.replace(/\.$/, '')) || [];
+    const cymru  = parseCymru(asnRes.value?.Answer?.[0]?.data);
+
+    el.innerHTML = dataCard('IP Lookup — ' + escHtml(ip), 'dot-cyan', [
+      ['IP Address',   escHtml(ip)],
+      ['Hostname(s)',  ptrs.length ? ptrs.map(escHtml).join('<br>') : '—', ptrs.length ? 'val-good' : ''],
+      ['ASN',          escHtml(cymru?.asn  || '—')],
+      ['IP Prefix',    escHtml(cymru?.prefix   || '—')],
+      ['Country',      cymru?.country ? `${flagEmoji(cymru.country)} ${cymru.country}` : '—'],
+      ['Registry',     escHtml(cymru?.registry || '—')],
+      ['Allocated',    escHtml(cymru?.date     || '—')],
+      ['PTR Zone',     escHtml(reversed)],
+    ]);
+  } catch (e) {
     showError(el, e.message || 'Lookup failed.');
   }
-}
-
-function mapLink(lat, lon) {
-  if (lat == null || lon == null) return '';
-  return `<div class="map-wrap">
-    <a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=10/${lat}/${lon}"
-       target="_blank" rel="noopener"
-       style="color:var(--cyan-dim);text-decoration:none;letter-spacing:.1em;font-size:.75rem;">
-      ↗ Open on OpenStreetMap  (${(+lat).toFixed(4)}, ${(+lon).toFixed(4)})
-    </a>
-  </div>`;
 }
 
 $('ipInput').addEventListener('keydown', e => e.key === 'Enter' && lookupIP());
 
 /* ════════════════════════════════════════════════
-   DNS LOOKUP  — Google DoH  (CORS ✅, no auth)
+   DNS RECORDS
 ════════════════════════════════════════════════ */
 const DNS_TYPES = ['A','AAAA','MX','TXT','NS','CNAME','SOA','CAA','SRV','PTR'];
 const TYPE_NUM  = {A:1,NS:2,CNAME:5,SOA:6,PTR:12,MX:15,TXT:16,AAAA:28,CAA:257,SRV:33};
 const NUM_TYPE  = Object.fromEntries(Object.entries(TYPE_NUM).map(([k,v])=>[v,k]));
 
-let allDnsRecords = [];
+let allDnsRecords  = [];
 let activeDnsFilter = 'ALL';
 
 async function lookupDNS() {
@@ -620,36 +653,33 @@ async function lookupDNS() {
   $('dnsFilters').style.display = 'none';
   allDnsRecords = [];
 
-  try {
-    const results = await Promise.allSettled(
-      DNS_TYPES.map(t =>
-        fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=${t}`)
-          .then(r => r.json())
-      )
-    );
+  const results = await Promise.allSettled(
+    DNS_TYPES.map(t => dnsQuery(domain, t))
+  );
 
-    results.forEach(res => {
-      if (res.status === 'fulfilled' && res.value.Answer) {
-        res.value.Answer.forEach(rec => {
-          allDnsRecords.push({ type: NUM_TYPE[rec.type] || rec.type, ttl: rec.TTL, value: rec.data });
+  results.forEach(res => {
+    if (res.status === 'fulfilled' && res.value?.Answer) {
+      res.value.Answer.forEach(rec => {
+        allDnsRecords.push({
+          type: NUM_TYPE[rec.type] || String(rec.type),
+          ttl:  rec.TTL,
+          value: rec.data,
         });
-      }
-    });
-
-    if (allDnsRecords.length === 0) {
-      el.innerHTML = `<div class="result-card"><div class="status-msg">No DNS records found for <strong>${escHtml(domain)}</strong>.</div></div>`;
-      return;
+      });
     }
+  });
 
-    $('dnsFilters').style.display = 'flex';
-    activeDnsFilter = 'ALL';
-    document.querySelectorAll('.type-pill').forEach(p => {
-      p.classList.toggle('active', p.textContent === 'All');
-    });
-    renderDNSTable(domain, el);
-  } catch(e) {
-    showError(el, 'DNS query failed. Check the domain name.');
+  if (allDnsRecords.length === 0) {
+    el.innerHTML = `<div class="result-card"><div class="status-msg">No DNS records found for <strong>${escHtml(domain)}</strong>.</div></div>`;
+    return;
   }
+
+  $('dnsFilters').style.display = 'flex';
+  activeDnsFilter = 'ALL';
+  document.querySelectorAll('.type-pill').forEach(p => {
+    p.classList.toggle('active', p.textContent === 'All');
+  });
+  renderDNSTable(domain, el);
 }
 
 function filterDNS(type) {
@@ -657,7 +687,7 @@ function filterDNS(type) {
   document.querySelectorAll('.type-pill').forEach(p => {
     p.classList.toggle('active', p.textContent === (type === 'ALL' ? 'All' : type));
   });
-  renderDNSTable($('dnsInput').value.trim(), $('dnsResult'));
+  renderDNSTable($('dnsInput').value.trim().replace(/^https?:\/\//,'').split('/')[0], $('dnsResult'));
 }
 
 function renderDNSTable(domain, el) {
@@ -672,13 +702,16 @@ function renderDNSTable(domain, el) {
 
   const rows = filtered.map(r => `
     <tr>
-      <td>${escHtml(String(r.type))}</td>
+      <td>${escHtml(r.type)}</td>
       <td>${r.ttl}s</td>
       <td>${escHtml(r.value)}</td>
     </tr>`).join('');
 
   el.innerHTML = `<div class="result-card">
-    <div class="result-card-header"><div class="dot dot-green"></div>DNS Records — ${escHtml(domain)} <span class="badge">${filtered.length} records</span></div>
+    <div class="result-card-header">
+      <div class="dot dot-green"></div>DNS Records — ${escHtml(domain)}
+      <span class="badge">${filtered.length} record${filtered.length !== 1 ? 's' : ''}</span>
+    </div>
     <table class="dns-table">
       <thead><tr><th>Type</th><th>TTL</th><th>Value</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -689,7 +722,7 @@ function renderDNSTable(domain, el) {
 $('dnsInput').addEventListener('keydown', e => e.key === 'Enter' && lookupDNS());
 
 /* ════════════════════════════════════════════════
-   REVERSE DNS
+   REVERSE DNS  —  PTR via Google DoH
 ════════════════════════════════════════════════ */
 async function lookupRDNS() {
   const ip = $('rdnsInput').value.trim();
@@ -700,52 +733,37 @@ async function lookupRDNS() {
   try {
     let ptrName;
     if (ip.includes(':')) {
-      const expanded = expandIPv6(ip);
-      ptrName = expanded.replace(/:/g,'').split('').reverse().join('.') + '.ip6.arpa';
+      ptrName = expandIPv6(ip).replace(/:/g,'').split('').reverse().join('.') + '.ip6.arpa';
     } else {
-      ptrName = ip.split('.').reverse().join('.') + '.in-addr.arpa';
+      ptrName = reverseIP(ip) + '.in-addr.arpa';
     }
 
-    const [ptrRes, geoRes] = await Promise.allSettled([
-      fetch(`https://dns.google/resolve?name=${encodeURIComponent(ptrName)}&type=PTR`).then(r => r.json()),
-      geoLookup(ip),
-    ]);
+    const data = await dnsQuery(ptrName, 'PTR');
+    const hostnames = data?.Answer?.map(a => a.data.replace(/\.$/, '')) || [];
 
-    const ptrData  = ptrRes.status === 'fulfilled' ? ptrRes.value : null;
-    const geo      = geoRes.status === 'fulfilled' ? geoRes.value : null;
-    const hostnames = ptrData?.Answer?.map(a => a.data).filter(Boolean) || [];
-
-    const rows = [
-      ['IP Address', ip],
-      ['PTR Name',   ptrName],
-      ['Hostnames',  hostnames.length
-        ? hostnames.map(h => escHtml(h)).join('<br>')
-        : '<span style="color:var(--text-dim)">No PTR record found</span>',
-        hostnames.length ? 'val-good' : ''],
-    ];
-
-    if (geo) {
-      const flag = geo.flag?.emoji || flagEmoji(geo.country_code);
-      const asn  = geo.connection?.asn ? 'AS' + geo.connection.asn : '—';
-      rows.push(
-        ['ISP',     geo.connection?.isp || '—'],
-        ['Org',     geo.connection?.org || '—'],
-        ['Country', geo.country ? `${flag} ${geo.country}` : '—'],
-        ['ASN',     asn],
-        ['Domain',  geo.connection?.domain || '—'],
-      );
-    }
-
-    el.innerHTML = dataCard('Reverse DNS — ' + ip, hostnames.length ? 'dot-green' : 'dot-gray', rows);
-  } catch(e) {
-    showError(el, 'Reverse DNS lookup failed.');
+    el.innerHTML = dataCard(
+      'Reverse DNS — ' + escHtml(ip),
+      hostnames.length ? 'dot-green' : 'dot-gray',
+      [
+        ['IP Address', escHtml(ip)],
+        ['PTR Zone',   escHtml(ptrName)],
+        ['Status',     data?.Status === 0 ? '<span class="val-good">NOERROR</span>' : `RCODE ${data?.Status ?? '—'}`],
+        ['Hostnames',  hostnames.length
+          ? hostnames.map(escHtml).join('<br>')
+          : '<span style="color:var(--text-dim)">No PTR record (NXDOMAIN)</span>',
+          hostnames.length ? 'val-good' : ''],
+        ['TTL',        data?.Answer?.[0]?.TTL != null ? data.Answer[0].TTL + 's' : '—'],
+      ]
+    );
+  } catch (e) {
+    showError(el, 'Reverse DNS lookup failed: ' + e.message);
   }
 }
 
 function expandIPv6(ip) {
   const parts = ip.split('::');
   const left  = parts[0] ? parts[0].split(':') : [];
-  const right = parts[1] ? parts[1].split(':') : [];
+  const right  = parts[1] ? parts[1].split(':') : [];
   while (left.length + right.length < 8) left.push('0000');
   return [...left, ...right].map(p => p.padStart(4,'0')).join(':');
 }
@@ -753,7 +771,9 @@ function expandIPv6(ip) {
 $('rdnsInput').addEventListener('keydown', e => e.key === 'Enter' && lookupRDNS());
 
 /* ════════════════════════════════════════════════
-   ASN / WHOIS
+   ASN LOOKUP  —  Team Cymru DNS service via Google DoH
+   Query: {reversed_ip}.origin.asn.cymru.com TXT
+   Returns: "ASN | prefix | country | registry | date"
 ════════════════════════════════════════════════ */
 async function lookupWhois() {
   const q = $('whoisInput').value.trim();
@@ -762,67 +782,59 @@ async function lookupWhois() {
   showLoading(el);
 
   try {
-    // ipwho.is accepts IP addresses; for ASN queries we strip "AS" and note the limitation
     const isASN = /^AS\d+$/i.test(q);
-    let d;
 
     if (isASN) {
-      // ipwho.is doesn't support ASN-only lookups; use rdap.arin.net as JSON source
+      /* Cymru ASN peer info: AS{n}.asn.cymru.com TXT */
       const asnNum = q.replace(/^AS/i, '');
-      const r = await fetch(`https://rdap.arin.net/registry/autnum/${asnNum}`, {
-        headers: { Accept: 'application/rdap+json' }
-      });
-      const raw = await r.json();
-      // Normalise RDAP response into a display-friendly format
-      const name  = raw.name || '—';
-      const handle = raw.handle || q.toUpperCase();
-      const country = (raw.entities?.[0]?.vcardArray?.[1] || []).find(f => f[0]==='adr')?.[1]?.['country-name'] || '—';
-      const notices = (raw.remarks || []).map(rem => rem.description?.join(' ')).filter(Boolean).join(' | ') || '—';
-      el.innerHTML = dataCard('ASN Info — ' + handle, 'dot-cyan', [
-        ['ASN Handle',   handle],
-        ['Name',         name],
-        ['Type',         raw.type || '—'],
-        ['Country',      country],
-        ['Start AS',     raw.startAutnum ?? '—'],
-        ['End AS',       raw.endAutnum ?? '—'],
-        ['Last Changed', raw.events?.find(e => e.eventAction === 'last changed')?.eventDate?.slice(0,10) || '—'],
-        ['Registration', raw.events?.find(e => e.eventAction === 'registration')?.eventDate?.slice(0,10) || '—'],
-        ['Remarks',      notices],
+      const data   = await dnsQuery(`AS${asnNum}.asn.cymru.com`, 'TXT');
+      const raw    = data?.Answer?.[0]?.data;
+      if (!raw) throw new Error('No Cymru record found for ' + q.toUpperCase());
+      /* Format: "ASN | CC | Registry | Date | Organisation" */
+      const clean = raw.replace(/"/g,'').trim();
+      const p     = clean.split('|').map(s => s.trim());
+      el.innerHTML = dataCard('ASN Info — AS' + escHtml(asnNum), 'dot-cyan', [
+        ['ASN',          escHtml('AS' + (p[0] || asnNum))],
+        ['Country',      p[1] ? `${flagEmoji(p[1])} ${p[1]}` : '—'],
+        ['Registry',     escHtml(p[2] || '—')],
+        ['Allocated',    escHtml(p[3] || '—')],
+        ['Organisation', escHtml(p[4] || '—')],
+        ['Raw TXT',      escHtml(clean)],
       ]);
-      return;
+    } else {
+      /* Treat as IP: reversed.origin.asn.cymru.com TXT */
+      const reversed = q.includes(':')
+        ? expandIPv6(q).replace(/:/g,'').split('').reverse().join('.') + '.origin6.asn.cymru.com'
+        : reverseIP(q) + '.origin.asn.cymru.com';
+
+      const [asnRes, ptrRes] = await Promise.allSettled([
+        dnsQuery(reversed, 'TXT'),
+        dnsQuery((q.includes(':')
+          ? expandIPv6(q).replace(/:/g,'').split('').reverse().join('.') + '.ip6.arpa'
+          : reverseIP(q) + '.in-addr.arpa'), 'PTR'),
+      ]);
+
+      const cymru  = parseCymru(asnRes.value?.Answer?.[0]?.data);
+      const ptrs   = ptrRes.value?.Answer?.map(a => a.data.replace(/\.$/, '')) || [];
+
+      if (!cymru) throw new Error('No ASN record found for ' + q);
+
+      el.innerHTML = dataCard('ASN / Network Info — ' + escHtml(q), 'dot-cyan', [
+        ['IP',           escHtml(q)],
+        ['Hostname(s)',  ptrs.length ? ptrs.map(escHtml).join('<br>') : '—', ptrs.length ? 'val-good' : ''],
+        ['ASN',          escHtml(cymru.asn      || '—')],
+        ['IP Prefix',    escHtml(cymru.prefix   || '—')],
+        ['Country',      cymru.country ? `${flagEmoji(cymru.country)} ${cymru.country}` : '—'],
+        ['Registry',     escHtml(cymru.registry || '—')],
+        ['Allocated',    escHtml(cymru.date     || '—')],
+      ]);
     }
-
-    d = await geoLookup(q);
-    const flag = d.flag?.emoji || flagEmoji(d.country_code);
-    const asn  = d.connection?.asn ? 'AS' + d.connection.asn : '—';
-
-    el.innerHTML = dataCard('Network Info — ' + q, 'dot-cyan', [
-      ['Query',        q],
-      ['IP',           d.ip],
-      ['Type',         d.type || '—'],
-      ['ASN',          asn],
-      ['ISP',          d.connection?.isp || '—'],
-      ['Organisation', d.connection?.org || '—'],
-      ['Domain',       d.connection?.domain || '—'],
-      ['Country',      d.country ? `${flag} ${d.country} (${d.country_code})` : '—'],
-      ['Continent',    d.continent || '—'],
-      ['Capital',      d.capital || '—'],
-      ['Calling Code', d.calling_code || '—'],
-      ['Currency',     d.currency?.name ? `${d.currency.name} (${d.currency.code})` : '—'],
-      ['Timezone',     d.timezone?.id || '—'],
-      ['UTC Offset',   d.timezone?.utc || '—'],
-    ]);
-  } catch(e) {
+  } catch (e) {
     showError(el, e.message || 'Query failed.');
   }
 }
 
 $('whoisInput').addEventListener('keydown', e => e.key === 'Enter' && lookupWhois());
-
-/* ── HELPERS ── */
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
 
 /* ── INIT ── */
 loadMyIP();
