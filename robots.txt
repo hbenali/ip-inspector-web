@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ip.hbenali.ovh/sitemap.xml

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 · IP not found · IP Inspector</title>
+  <meta name="robots" content="noindex, follow">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(145deg, #e8f4fc 0%, #d4e9f7 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .glass-card {
+      background: rgba(255,255,255,0.75);
+      backdrop-filter: blur(12px);
+      border-radius: 2.5rem;
+      padding: 3rem 2.5rem;
+      text-align: center;
+      max-width: 600px;
+      border: 1px solid rgba(255,255,255,0.5);
+    }
+    .error-code { font-size: 8rem; font-weight: 700; background: linear-gradient(135deg, #2c7da0, #3498db); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    h1 { color: #2c7da0; margin: 1rem 0; }
+    .message { color: #4a6f8a; margin-bottom: 2rem; }
+    .btn { display: inline-block; background: #3498db; color: white; padding: 1rem 2rem; border-radius: 60px; text-decoration: none; font-weight: 600; margin-top: 1rem; }
+    .btn:hover { background: #2c7da0; }
+    footer { margin-top: 2rem; color: #6c8ea0; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="glass-card">
+    <div class="error-code">404</div>
+    <h1>IP not found</h1>
+    <div class="message">The page or IP you're looking for doesn't exist.</div>
+    <a href="/" class="btn">🏠 Back to IP Inspector</a>
+    <footer>ip.hbenali.ovh · network intelligence</footer>
+  </div>
+</body>
+</html>
