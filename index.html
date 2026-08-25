@@ -893,44 +893,52 @@
     </div>
 
     <div class="tab-content active" id="aboutTab" role="tabpanel" aria-labelledby="tabAbout" tabindex="0">
-      <div class="info-table">
-        <tr><td>🌐 What is an IP address?</td><td>A unique identifier for devices on a network</td></tr>
-        <tr><td>📡 IPv4 vs IPv6</td><td>IPv4: 32-bit (e.g., 192.168.1.1) | IPv6: 128-bit, 8 groups</td></tr>
-        <tr><td>🏢 Public vs Private</td><td>Public: internet-routable | Private: local networks (192.168.x.x, 10.x.x.x)</td></tr>
-        <tr><td>🔍 Geolocation</td><td>IPs can reveal approximate location (city/country)</td></tr>
-      </div>
+      <table class="info-table">
+        <tbody>
+          <tr><td>🌐 What is an IP address?</td><td>A unique identifier for devices on a network</td></tr>
+          <tr><td>📡 IPv4 vs IPv6</td><td>IPv4: 32-bit (e.g., 192.168.1.1) | IPv6: 128-bit, 8 groups</td></tr>
+          <tr><td>🏢 Public vs Private</td><td>Public: internet-routable | Private: local networks (192.168.x.x, 10.x.x.x)</td></tr>
+          <tr><td>🔍 Geolocation</td><td>IPs can reveal approximate location (city/country)</td></tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="tab-content" id="classesTab" role="tabpanel" aria-labelledby="tabClasses" tabindex="0">
-      <div class="info-table">
-        <tr><td>Class A</td><td>1.0.0.0 - 126.255.255.255 | Large networks</td></tr>
-        <tr><td>Class B</td><td>128.0.0.0 - 191.255.255.255 | Medium networks</td></tr>
-        <tr><td>Class C</td><td>192.0.0.0 - 223.255.255.255 | Small networks</td></tr>
-        <tr><td>Multicast</td><td>224.0.0.0 - 239.255.255.255</td></tr>
-        <tr><td>Reserved</td><td>240.0.0.0 - 255.255.255.255</td></tr>
-      </div>
+      <table class="info-table">
+        <tbody>
+          <tr><td>Class A</td><td>1.0.0.0 - 126.255.255.255 | Large networks</td></tr>
+          <tr><td>Class B</td><td>128.0.0.0 - 191.255.255.255 | Medium networks</td></tr>
+          <tr><td>Class C</td><td>192.0.0.0 - 223.255.255.255 | Small networks</td></tr>
+          <tr><td>Multicast</td><td>224.0.0.0 - 239.255.255.255</td></tr>
+          <tr><td>Reserved</td><td>240.0.0.0 - 255.255.255.255</td></tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="tab-content" id="privateTab" role="tabpanel" aria-labelledby="tabPrivate" tabindex="0">
-      <div class="info-table">
-        <tr><td>Class A Private</td><td>10.0.0.0 - 10.255.255.255</td><td><button class="try-btn" type="button" data-ip="10.0.0.1">Try 10.0.0.1</button></td></tr>
-        <tr><td>Class B Private</td><td>172.16.0.0 - 172.31.255.255</td><td><button class="try-btn" type="button" data-ip="172.16.0.1">Try 172.16.0.1</button></td></tr>
-        <tr><td>Class C Private</td><td>192.168.0.0 - 192.168.255.255</td><td><button class="try-btn" type="button" data-ip="192.168.1.1">Try 192.168.1.1</button></td></tr>
-        <tr><td>Localhost</td><td>127.0.0.0 - 127.255.255.255</td><td><button class="try-btn" type="button" data-ip="127.0.0.1">Try 127.0.0.1</button></td></tr>
-        <tr><td>Link-local</td><td>169.254.0.0 - 169.254.255.255</td><td><button class="try-btn" type="button" data-ip="169.254.1.1">Try 169.254.1.1</button></td></tr>
-        <tr><td>IPv6 Loopback</td><td>::1</td><td><button class="try-btn" type="button" data-ip="::1">Try ::1</button></td></tr>
-        <tr><td>IPv6 Link-local</td><td>fe80::/10</td><td><button class="try-btn" type="button" data-ip="fe80::1">Try fe80::1</button></td></tr>
-        <tr><td>IPv6 Unique local</td><td>fc00::/7</td><td><button class="try-btn" type="button" data-ip="fc00::1">Try fc00::1</button></td></tr>
-      </div>
+      <table class="info-table">
+        <tbody>
+          <tr><td>Class A Private</td><td>10.0.0.0 - 10.255.255.255</td><td><button class="try-btn" type="button" data-ip="10.0.0.1">Try 10.0.0.1</button></td></tr>
+          <tr><td>Class B Private</td><td>172.16.0.0 - 172.31.255.255</td><td><button class="try-btn" type="button" data-ip="172.16.0.1">Try 172.16.0.1</button></td></tr>
+          <tr><td>Class C Private</td><td>192.168.0.0 - 192.168.255.255</td><td><button class="try-btn" type="button" data-ip="192.168.1.1">Try 192.168.1.1</button></td></tr>
+          <tr><td>Localhost</td><td>127.0.0.0 - 127.255.255.255</td><td><button class="try-btn" type="button" data-ip="127.0.0.1">Try 127.0.0.1</button></td></tr>
+          <tr><td>Link-local</td><td>169.254.0.0 - 169.254.255.255</td><td><button class="try-btn" type="button" data-ip="169.254.1.1">Try 169.254.1.1</button></td></tr>
+          <tr><td>IPv6 Loopback</td><td>::1</td><td><button class="try-btn" type="button" data-ip="::1">Try ::1</button></td></tr>
+          <tr><td>IPv6 Link-local</td><td>fe80::/10</td><td><button class="try-btn" type="button" data-ip="fe80::1">Try fe80::1</button></td></tr>
+          <tr><td>IPv6 Unique local</td><td>fc00::/7</td><td><button class="try-btn" type="button" data-ip="fc00::1">Try fc00::1</button></td></tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="tab-content" id="securityTab" role="tabpanel" aria-labelledby="tabSecurity" tabindex="0">
-      <div class="info-table">
-        <tr><td>🔒 Use VPN</td><td>Encrypts traffic and hides your IP</td></tr>
-        <tr><td>🛡️ Firewall</td><td>Blocks unauthorized access</td></tr>
-        <tr><td>📡 Check IP reputation</td><td>Some IPs are flagged for spam/malware</td></tr>
-        <tr><td>🌍 Avoid public Wi-Fi</td><td>Unless using VPN, data can be intercepted</td></tr>
-      </div>
+      <table class="info-table">
+        <tbody>
+          <tr><td>🔒 Use VPN</td><td>Encrypts traffic and hides your IP</td></tr>
+          <tr><td>🛡️ Firewall</td><td>Blocks unauthorized access</td></tr>
+          <tr><td>📡 Check IP reputation</td><td>Some IPs are flagged for spam/malware</td></tr>
+          <tr><td>🌍 Avoid public Wi-Fi</td><td>Unless using VPN, data can be intercepted</td></tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="tab-content" id="calcTab" role="tabpanel" aria-labelledby="tabCalc" tabindex="0">
