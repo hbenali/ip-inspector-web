@@ -190,6 +190,15 @@
       font-size: 0.85rem;
     }
 
+    footer a {
+      color: var(--text-muted);
+      text-decoration: underline;
+    }
+
+    footer a:hover {
+      color: var(--accent-dark);
+    }
+
     @media (max-width: 480px) {
       .glass-card { padding: 2.2rem 1.3rem; border-radius: 1.6rem; }
       .lookup-form { flex-direction: column; }
@@ -217,7 +226,7 @@
       <a href="/?ip=example.com">example.com</a>
     </div>
 
-    <footer>ip.hbenali.ovh · network intelligence</footer>
+    <footer>ip.hbenali.ovh · network intelligence · <a href="https://hbenali.ovh" target="_blank" rel="noopener noreferrer">hbenali.ovh</a></footer>
   </main>
 
   <script>
