@@ -732,8 +732,8 @@
       margin-bottom: 1.2rem;
     }
 
-    #cidrInput {
-      flex: 1 1 240px;
+    .calc-text-input {
+      flex: 1 1 200px;
       min-width: 0;
       padding: 0.9rem 1.2rem;
       font-size: 1rem;
@@ -746,13 +746,42 @@
       transition: 0.15s;
     }
 
-    #cidrInput:focus {
+    .calc-text-input:focus {
       border-color: var(--accent);
     }
 
-    #cidrInput::placeholder {
+    .calc-text-input::placeholder {
       color: #9bb7cc;
       font-family: 'Inter', sans-serif;
+    }
+
+    .calc-section {
+      margin-top: 2rem;
+      padding-top: 1.6rem;
+      border-top: 1px solid var(--table-border);
+    }
+
+    .calc-section:first-child {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .cidr-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .cidr-chip {
+      background: var(--stat-bg);
+      border: 1px solid var(--tab-border);
+      color: var(--accent-dark);
+      padding: 0.5rem 1rem;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: 'SF Mono', monospace;
     }
 
     .note {
@@ -849,7 +878,7 @@
       .my-ip-actions { justify-content: stretch; }
       .my-ip-copy { flex: 1; }
       #checkBtn { width: 100%; }
-      #calcBtn { width: 100%; }
+      #calcBtn, #rangeCalcBtn { width: 100%; }
       .info-table td:has(.try-btn) { white-space: nowrap; }
       .result-actions { justify-content: stretch; }
       .action-btn { flex: 1 1 auto; text-align: center; }
@@ -994,14 +1023,25 @@
     </div>
 
     <div class="tab-content" id="calcTab" role="tabpanel" aria-labelledby="tabCalc" tabindex="0">
-      <div class="calc-wrapper">
-        <label for="cidrInput">CIDR notation <i>example: 192.168.1.0/24</i></label>
+      <div class="calc-wrapper calc-section">
+        <label for="cidrInput">CIDR → network details <i>example: 192.168.1.0/24</i></label>
         <div class="calc-input-row">
-          <input type="text" id="cidrInput" placeholder="e.g., 192.168.1.0/24" autocomplete="off" spellcheck="false">
+          <input type="text" id="cidrInput" class="calc-text-input" placeholder="e.g., 192.168.1.0/24" autocomplete="off" spellcheck="false">
           <button type="button" id="calcBtn">Calculate</button>
         </div>
         <div id="calcResult" style="display: none;"></div>
         <div id="calcError" style="display: none;"></div>
+      </div>
+
+      <div class="calc-wrapper calc-section">
+        <label for="rangeStartInput">IP range → CIDR blocks <i>example: 192.168.1.0 to 192.168.1.255</i></label>
+        <div class="calc-input-row">
+          <input type="text" id="rangeStartInput" class="calc-text-input" placeholder="Start IP, e.g. 192.168.1.0" autocomplete="off" spellcheck="false">
+          <input type="text" id="rangeEndInput" class="calc-text-input" placeholder="End IP, e.g. 192.168.1.255" autocomplete="off" spellcheck="false">
+          <button type="button" id="rangeCalcBtn">Calculate</button>
+        </div>
+        <div id="rangeResult" style="display: none;"></div>
+        <div id="rangeError" style="display: none;"></div>
       </div>
     </div>
   </div>
@@ -1581,35 +1621,71 @@
     });
 
     // ---------- Subnet / CIDR calculator ----------
+    function ipv4ToInt(ip) {
+      const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip.trim());
+      if (!match) throw new Error(`"${ip.trim()}" is not a valid IPv4 address`);
+      const octets = [1, 2, 3, 4].map(i => parseInt(match[i], 10));
+      if (octets.some(o => o < 0 || o > 255)) throw new Error(`"${ip.trim()}" has an octet outside 0-255`);
+      return (octets[0] * 16777216) + (octets[1] * 65536) + (octets[2] * 256) + octets[3];
+    }
+
+    function intToIpv4(n) {
+      return [24, 16, 8, 0].map(s => (n >>> s) & 255).join('.');
+    }
+
+    function maskForPrefix(prefix) {
+      return prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
+    }
+
     function calculateSubnet(cidr) {
-      const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\s*\/\s*(\d{1,2})$/.exec(cidr.trim());
+      const match = /^(.+?)\s*\/\s*(\d{1,2})$/.exec(cidr.trim());
       if (!match) throw new Error('Enter a valid CIDR, e.g. 192.168.1.0/24');
 
-      const octets = [1, 2, 3, 4].map(i => parseInt(match[i], 10));
-      if (octets.some(o => o < 0 || o > 255)) throw new Error('Octets must be between 0 and 255');
-
-      const prefix = parseInt(match[5], 10);
+      const ipInt = ipv4ToInt(match[1]);
+      const prefix = parseInt(match[2], 10);
       if (prefix < 0 || prefix > 32) throw new Error('Prefix must be between /0 and /32');
 
-      const ipInt = (octets[0] * 16777216) + (octets[1] * 65536) + (octets[2] * 256) + octets[3];
-      const maskInt = prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
+      const maskInt = maskForPrefix(prefix);
       const networkInt = (ipInt & maskInt) >>> 0;
       const broadcastInt = (networkInt | (~maskInt >>> 0)) >>> 0;
       const totalAddresses = Math.pow(2, 32 - prefix);
       const usableHosts = prefix >= 31 ? totalAddresses : Math.max(totalAddresses - 2, 0);
 
-      const toIp = (n) => [24, 16, 8, 0].map(s => (n >>> s) & 255).join('.');
-
       return {
         prefix,
-        network: toIp(networkInt),
-        broadcast: toIp(broadcastInt),
-        mask: toIp(maskInt),
-        firstHost: prefix >= 31 ? toIp(networkInt) : toIp(networkInt + 1),
-        lastHost: prefix >= 31 ? toIp(broadcastInt) : toIp(broadcastInt - 1),
+        network: intToIpv4(networkInt),
+        broadcast: intToIpv4(broadcastInt),
+        mask: intToIpv4(maskInt),
+        firstHost: prefix >= 31 ? intToIpv4(networkInt) : intToIpv4(networkInt + 1),
+        lastHost: prefix >= 31 ? intToIpv4(broadcastInt) : intToIpv4(broadcastInt - 1),
         totalAddresses,
         usableHosts
       };
+    }
+
+    // Summarize an arbitrary IP range into the minimal list of covering CIDR blocks
+    function rangeToCidrs(startIp, endIp) {
+      let start = ipv4ToInt(startIp);
+      const end = ipv4ToInt(endIp);
+      if (end < start) throw new Error('End IP must be greater than or equal to start IP');
+
+      const blocks = [];
+      let guard = 0;
+      while (end >= start) {
+        if (++guard > 128) throw new Error('Range is too fragmented to summarize');
+
+        let prefix = 32;
+        while (prefix > 0 && (start & maskForPrefix(prefix - 1)) >>> 0 === start) {
+          prefix--;
+        }
+
+        const maxDiff = 32 - Math.floor(Math.log2(end - start + 1));
+        if (prefix < maxDiff) prefix = maxDiff;
+
+        blocks.push({ base: intToIpv4(start), prefix });
+        start += Math.pow(2, 32 - prefix);
+      }
+      return blocks;
     }
 
     const cidrInput = document.getElementById('cidrInput');
@@ -1667,10 +1743,52 @@
       if (e.key === 'Enter') runSubnetCalc();
     });
 
+    const rangeStartInput = document.getElementById('rangeStartInput');
+    const rangeEndInput = document.getElementById('rangeEndInput');
+    const rangeCalcBtn = document.getElementById('rangeCalcBtn');
+    const rangeResult = document.getElementById('rangeResult');
+    const rangeError = document.getElementById('rangeError');
+
+    function runRangeCalc() {
+      const startValue = rangeStartInput.value.trim();
+      const endValue = rangeEndInput.value.trim();
+      rangeResult.style.display = 'none';
+      rangeError.style.display = 'none';
+      if (!startValue || !endValue) return;
+
+      try {
+        const blocks = rangeToCidrs(startValue, endValue);
+        rangeResult.innerHTML = `
+          <div class="cidr-list">
+            ${blocks.map(b => `<span class="cidr-chip">${escapeHtml(b.base)}/${b.prefix}</span>`).join('')}
+          </div>
+        `;
+        rangeResult.style.display = 'block';
+        playEnterAnimation(rangeResult);
+      } catch (err) {
+        rangeError.innerHTML = `<div class="error-message">❌ ${escapeHtml(err.message)}</div>`;
+        rangeError.style.display = 'block';
+        playEnterAnimation(rangeError);
+      }
+    }
+
+    rangeCalcBtn.addEventListener('click', runRangeCalc);
+    [rangeStartInput, rangeEndInput].forEach(input => {
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') runRangeCalc();
+      });
+    });
+
     // Keyboard shortcuts: "/" focuses input, "Escape" clears it
+    function isEditableElement(el) {
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+    }
+
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key === '/' && document.activeElement !== ipInput) {
+      if (e.key === '/' && !isEditableElement(document.activeElement)) {
         e.preventDefault();
         ipInput.focus();
       } else if (e.key === 'Escape' && document.activeElement === ipInput) {
