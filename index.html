@@ -30,11 +30,11 @@
   <link rel="apple-touch-icon" href="/favicon.svg">
   <meta name="theme-color" content="#3498db">
 
-  <!-- Speed up first lookups -->
-  <link rel="preconnect" href="https://ipapi.co">
-  <link rel="preconnect" href="https://ip-api.com">
-  <link rel="preconnect" href="https://dns.google">
+  <!-- api.ipify.org is fetched immediately on load; the rest are only hit on-demand after a search -->
   <link rel="preconnect" href="https://api.ipify.org">
+  <link rel="dns-prefetch" href="https://ipapi.co">
+  <link rel="dns-prefetch" href="https://ip-api.com">
+  <link rel="dns-prefetch" href="https://dns.google">
   <link rel="dns-prefetch" href="https://www.openstreetmap.org">
 
   <!-- Structured data -->
