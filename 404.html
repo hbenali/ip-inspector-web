@@ -3,43 +3,240 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>404 · IP not found · IP Inspector</title>
+  <title>404 · Page not found · IP Inspector</title>
+  <meta name="description" content="The page you're looking for doesn't exist. Head back to IP Inspector to look up any IP address or domain.">
   <meta name="robots" content="noindex, follow">
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="theme-color" content="#3498db">
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-1: #e8f4fc;
+      --bg-2: #d4e9f7;
+      --text: #1a2639;
+      --text-muted: #4a6f8a;
+      --card-bg: rgba(255, 255, 255, 0.75);
+      --card-border: rgba(255, 255, 255, 0.5);
+      --accent: #3498db;
+      --accent-dark: #2c7da0;
+      --accent-solid: #2c7da0;
+      --accent-solid-hover: #215f78;
+      --input-bg: #ffffff;
+      --tab-border: #cbd5e1;
+      --shadow-color: rgba(52, 152, 219, 0.25);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg-1: #0f172a;
+        --bg-2: #1c2c40;
+        --text: #e6edf5;
+        --text-muted: #93aec4;
+        --card-bg: rgba(20, 30, 46, 0.78);
+        --card-border: rgba(255, 255, 255, 0.08);
+        --input-bg: #131f30;
+        --tab-border: #2d4257;
+        --shadow-color: rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg-1: #0f172a;
+      --bg-2: #1c2c40;
+      --text: #e6edf5;
+      --text-muted: #93aec4;
+      --card-bg: rgba(20, 30, 46, 0.78);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --input-bg: #131f30;
+      --tab-border: #2d4257;
+      --shadow-color: rgba(0, 0, 0, 0.45);
+    }
+
     body {
-      background: linear-gradient(145deg, #e8f4fc 0%, #d4e9f7 100%);
+      background: linear-gradient(145deg, var(--bg-1) 0%, var(--bg-2) 100%);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
+      color: var(--text);
     }
+
     .glass-card {
-      background: rgba(255,255,255,0.75);
+      background: var(--card-bg);
       backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-radius: 2.5rem;
       padding: 3rem 2.5rem;
       text-align: center;
       max-width: 600px;
-      border: 1px solid rgba(255,255,255,0.5);
+      width: 100%;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 25px 50px -12px var(--shadow-color);
     }
-    .error-code { font-size: 8rem; font-weight: 700; background: linear-gradient(135deg, #2c7da0, #3498db); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    h1 { color: #2c7da0; margin: 1rem 0; }
-    .message { color: #4a6f8a; margin-bottom: 2rem; }
-    .btn { display: inline-block; background: #3498db; color: white; padding: 1rem 2rem; border-radius: 60px; text-decoration: none; font-weight: 600; margin-top: 1rem; }
-    .btn:hover { background: #2c7da0; }
-    footer { margin-top: 2rem; color: #6c8ea0; font-size: 0.85rem; }
+
+    .error-code {
+      font-size: clamp(4rem, 18vw, 8rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      line-height: 1;
+    }
+
+    h1 {
+      color: var(--accent-dark);
+      margin: 1rem 0 0.6rem;
+      font-size: clamp(1.3rem, 5vw, 1.7rem);
+    }
+
+    .message {
+      color: var(--text-muted);
+      margin-bottom: 1.8rem;
+    }
+
+    .lookup-form {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.6rem;
+    }
+
+    #jumpInput {
+      flex: 1 1 200px;
+      min-width: 0;
+      padding: 0.9rem 1.3rem;
+      font-size: 1rem;
+      border-radius: 60px;
+      border: 2px solid rgba(52, 152, 219, 0.2);
+      background: var(--input-bg);
+      color: var(--text);
+      font-family: 'SF Mono', monospace;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #jumpInput:focus {
+      border-color: var(--accent);
+    }
+
+    #jumpInput::placeholder {
+      color: #9bb7cc;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .btn, button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: var(--accent-solid);
+      color: white;
+      padding: 0.9rem 1.8rem;
+      border-radius: 60px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn:hover, button:hover {
+      background: var(--accent-solid-hover);
+    }
+
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 1.8rem;
+    }
+
+    .quick-links span {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      align-self: center;
+    }
+
+    .quick-links a {
+      background: var(--input-bg);
+      border: 1px solid var(--tab-border);
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      font-family: 'SF Mono', monospace;
+      transition: 0.15s;
+    }
+
+    .quick-links a:hover {
+      border-color: var(--accent);
+      color: var(--accent-dark);
+    }
+
+    footer {
+      margin-top: 2rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 480px) {
+      .glass-card { padding: 2.2rem 1.3rem; border-radius: 1.6rem; }
+      .lookup-form { flex-direction: column; }
+      #jumpInput, .lookup-form button { width: 100%; }
+    }
   </style>
 </head>
 <body>
-  <div class="glass-card">
+  <main class="glass-card">
     <div class="error-code">404</div>
-    <h1>IP not found</h1>
-    <div class="message">The page or IP you're looking for doesn't exist.</div>
+    <h1>This IP trail went cold</h1>
+    <div class="message">The page you're looking for doesn't exist — but you can still look one up below.</div>
+
+    <form class="lookup-form" id="jumpForm">
+      <input type="text" id="jumpInput" placeholder="e.g., 8.8.8.8 or example.com" autocomplete="off" spellcheck="false" aria-label="IP address or domain">
+      <button type="submit">🔍 Inspect</button>
+    </form>
+
     <a href="/" class="btn">🏠 Back to IP Inspector</a>
+
+    <div class="quick-links">
+      <span>Try:</span>
+      <a href="/?ip=8.8.8.8">8.8.8.8</a>
+      <a href="/?ip=1.1.1.1">1.1.1.1</a>
+      <a href="/?ip=example.com">example.com</a>
+    </div>
+
     <footer>ip.hbenali.ovh · network intelligence</footer>
-  </div>
+  </main>
+
+  <script>
+    (function() {
+      try {
+        var theme = localStorage.getItem('ipInspectorTheme');
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.setAttribute('data-theme', theme);
+        }
+      } catch (e) {}
+
+      var form = document.getElementById('jumpForm');
+      var input = document.getElementById('jumpInput');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var value = input.value.trim();
+        if (value) window.location.href = '/?ip=' + encodeURIComponent(value);
+      });
+    })();
+  </script>
 </body>
 </html>

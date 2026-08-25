@@ -27,7 +27,7 @@
   <!-- SVG Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" href="/favicon.ico">
-  <link rel="apple-touch-icon" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <meta name="theme-color" content="#3498db">
 
   <!-- api.ipify.org is fetched immediately on load; the rest are only hit on-demand after a search -->
@@ -87,6 +87,8 @@
       --card-border: rgba(255, 255, 255, 0.5);
       --accent: #3498db;
       --accent-dark: #2c7da0;
+      --accent-solid: #2c7da0;
+      --accent-solid-hover: #215f78;
       --input-bg: #ffffff;
       --stat-bg: #ffffff;
       --result-bg: rgba(255, 255, 255, 0.6);
@@ -254,7 +256,7 @@
     }
 
     .my-ip-copy, .my-ip-refresh {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.22);
       border: none;
       padding: 0.5rem 1.5rem;
       border-radius: 40px;
@@ -269,7 +271,7 @@
     }
 
     .my-ip-copy:hover, .my-ip-refresh:hover {
-      background: rgba(255, 255, 255, 0.3);
+      background: rgba(0, 0, 0, 0.32);
       transform: none;
       box-shadow: none;
     }
@@ -338,7 +340,7 @@
     }
 
     button {
-      background: var(--accent);
+      background: var(--accent-solid);
       border: none;
       padding: 1rem 2.3rem;
       border-radius: 60px;
@@ -350,16 +352,16 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      box-shadow: 0 12px 22px -10px var(--accent);
+      box-shadow: 0 12px 22px -10px var(--accent-solid);
       transition: all 0.2s;
       border: 1px solid rgba(255, 255, 255, 0.3);
       letter-spacing: 0.3px;
     }
 
     button:hover {
-      background: var(--accent-dark);
+      background: var(--accent-solid-hover);
       transform: scale(1.02);
-      box-shadow: 0 18px 28px -10px var(--accent-dark);
+      box-shadow: 0 18px 28px -10px var(--accent-solid-hover);
     }
 
     button:active {
@@ -654,8 +656,8 @@
     }
 
     .tab-btn.active {
-      background: var(--accent);
-      border-color: var(--accent);
+      background: var(--accent-solid);
+      border-color: var(--accent-solid);
       color: white;
     }
 
@@ -689,6 +691,62 @@
       font-weight: 600;
       color: var(--accent-dark);
       width: 40%;
+    }
+
+    .try-btn {
+      background: var(--stat-bg);
+      border: 1px solid var(--tab-border);
+      color: var(--accent-dark);
+      padding: 0.35rem 0.9rem;
+      border-radius: 30px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: 'SF Mono', monospace;
+      box-shadow: none;
+      letter-spacing: normal;
+      white-space: nowrap;
+    }
+
+    .try-btn:hover {
+      border-color: var(--accent);
+      background: var(--stat-bg);
+      transform: none;
+      box-shadow: none;
+    }
+
+    .calc-wrapper label {
+      margin-bottom: 0.6rem;
+    }
+
+    .calc-input-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1.2rem;
+    }
+
+    #cidrInput {
+      flex: 1 1 240px;
+      min-width: 0;
+      padding: 0.9rem 1.2rem;
+      font-size: 1rem;
+      background: var(--input-bg);
+      border: 2px solid rgba(52, 152, 219, 0.2);
+      border-radius: 60px;
+      outline: none;
+      color: var(--text);
+      font-family: 'SF Mono', monospace;
+      transition: 0.15s;
+    }
+
+    #cidrInput:focus {
+      border-color: var(--accent);
+    }
+
+    #cidrInput::placeholder {
+      color: #9bb7cc;
+      font-family: 'Inter', sans-serif;
     }
 
     .note {
@@ -740,6 +798,8 @@
       .my-ip-actions { justify-content: stretch; }
       .my-ip-copy { flex: 1; }
       #checkBtn { width: 100%; }
+      #calcBtn { width: 100%; }
+      .info-table td:has(.try-btn) { white-space: nowrap; }
       .result-actions { justify-content: stretch; }
       .action-btn { flex: 1 1 auto; text-align: center; }
       .guide-section { padding: 1.1rem; }
@@ -824,14 +884,15 @@
 
   <!-- Educational Guide -->
   <div class="guide-section">
-    <div class="guide-tabs">
-      <button class="tab-btn active" id="tabAbout" type="button">ℹ️ About IP</button>
-      <button class="tab-btn" id="tabClasses" type="button">📊 IP Classes</button>
-      <button class="tab-btn" id="tabPrivate" type="button">🔒 Private Ranges</button>
-      <button class="tab-btn" id="tabSecurity" type="button">🛡️ Security Tips</button>
+    <div class="guide-tabs" role="tablist" aria-label="IP knowledge base">
+      <button class="tab-btn active" id="tabAbout" type="button" role="tab" aria-selected="true" aria-controls="aboutTab" tabindex="0">ℹ️ About IP</button>
+      <button class="tab-btn" id="tabClasses" type="button" role="tab" aria-selected="false" aria-controls="classesTab" tabindex="-1">📊 IP Classes</button>
+      <button class="tab-btn" id="tabPrivate" type="button" role="tab" aria-selected="false" aria-controls="privateTab" tabindex="-1">🔒 Private Ranges</button>
+      <button class="tab-btn" id="tabSecurity" type="button" role="tab" aria-selected="false" aria-controls="securityTab" tabindex="-1">🛡️ Security Tips</button>
+      <button class="tab-btn" id="tabCalc" type="button" role="tab" aria-selected="false" aria-controls="calcTab" tabindex="-1">🧮 Subnet Calculator</button>
     </div>
 
-    <div class="tab-content active" id="aboutTab">
+    <div class="tab-content active" id="aboutTab" role="tabpanel" aria-labelledby="tabAbout" tabindex="0">
       <div class="info-table">
         <tr><td>🌐 What is an IP address?</td><td>A unique identifier for devices on a network</td></tr>
         <tr><td>📡 IPv4 vs IPv6</td><td>IPv4: 32-bit (e.g., 192.168.1.1) | IPv6: 128-bit, 8 groups</td></tr>
@@ -840,7 +901,7 @@
       </div>
     </div>
 
-    <div class="tab-content" id="classesTab">
+    <div class="tab-content" id="classesTab" role="tabpanel" aria-labelledby="tabClasses" tabindex="0">
       <div class="info-table">
         <tr><td>Class A</td><td>1.0.0.0 - 126.255.255.255 | Large networks</td></tr>
         <tr><td>Class B</td><td>128.0.0.0 - 191.255.255.255 | Medium networks</td></tr>
@@ -850,25 +911,37 @@
       </div>
     </div>
 
-    <div class="tab-content" id="privateTab">
+    <div class="tab-content" id="privateTab" role="tabpanel" aria-labelledby="tabPrivate" tabindex="0">
       <div class="info-table">
-        <tr><td>Class A Private</td><td>10.0.0.0 - 10.255.255.255</td></tr>
-        <tr><td>Class B Private</td><td>172.16.0.0 - 172.31.255.255</td></tr>
-        <tr><td>Class C Private</td><td>192.168.0.0 - 192.168.255.255</td></tr>
-        <tr><td>Localhost</td><td>127.0.0.0 - 127.255.255.255</td></tr>
-        <tr><td>Link-local</td><td>169.254.0.0 - 169.254.255.255</td></tr>
-        <tr><td>IPv6 Loopback</td><td>::1</td></tr>
-        <tr><td>IPv6 Link-local</td><td>fe80::/10</td></tr>
-        <tr><td>IPv6 Unique local</td><td>fc00::/7</td></tr>
+        <tr><td>Class A Private</td><td>10.0.0.0 - 10.255.255.255</td><td><button class="try-btn" type="button" data-ip="10.0.0.1">Try 10.0.0.1</button></td></tr>
+        <tr><td>Class B Private</td><td>172.16.0.0 - 172.31.255.255</td><td><button class="try-btn" type="button" data-ip="172.16.0.1">Try 172.16.0.1</button></td></tr>
+        <tr><td>Class C Private</td><td>192.168.0.0 - 192.168.255.255</td><td><button class="try-btn" type="button" data-ip="192.168.1.1">Try 192.168.1.1</button></td></tr>
+        <tr><td>Localhost</td><td>127.0.0.0 - 127.255.255.255</td><td><button class="try-btn" type="button" data-ip="127.0.0.1">Try 127.0.0.1</button></td></tr>
+        <tr><td>Link-local</td><td>169.254.0.0 - 169.254.255.255</td><td><button class="try-btn" type="button" data-ip="169.254.1.1">Try 169.254.1.1</button></td></tr>
+        <tr><td>IPv6 Loopback</td><td>::1</td><td><button class="try-btn" type="button" data-ip="::1">Try ::1</button></td></tr>
+        <tr><td>IPv6 Link-local</td><td>fe80::/10</td><td><button class="try-btn" type="button" data-ip="fe80::1">Try fe80::1</button></td></tr>
+        <tr><td>IPv6 Unique local</td><td>fc00::/7</td><td><button class="try-btn" type="button" data-ip="fc00::1">Try fc00::1</button></td></tr>
       </div>
     </div>
 
-    <div class="tab-content" id="securityTab">
+    <div class="tab-content" id="securityTab" role="tabpanel" aria-labelledby="tabSecurity" tabindex="0">
       <div class="info-table">
         <tr><td>🔒 Use VPN</td><td>Encrypts traffic and hides your IP</td></tr>
         <tr><td>🛡️ Firewall</td><td>Blocks unauthorized access</td></tr>
         <tr><td>📡 Check IP reputation</td><td>Some IPs are flagged for spam/malware</td></tr>
         <tr><td>🌍 Avoid public Wi-Fi</td><td>Unless using VPN, data can be intercepted</td></tr>
+      </div>
+    </div>
+
+    <div class="tab-content" id="calcTab" role="tabpanel" aria-labelledby="tabCalc" tabindex="0">
+      <div class="calc-wrapper">
+        <label for="cidrInput">CIDR notation <i>example: 192.168.1.0/24</i></label>
+        <div class="calc-input-row">
+          <input type="text" id="cidrInput" placeholder="e.g., 192.168.1.0/24" autocomplete="off" spellcheck="false">
+          <button type="button" id="calcBtn">Calculate</button>
+        </div>
+        <div id="calcResult" style="display: none;"></div>
+        <div id="calcError" style="display: none;"></div>
       </div>
     </div>
   </div>
@@ -901,31 +974,38 @@
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
     // Tab elements
-    const tabAbout = document.getElementById('tabAbout');
-    const tabClasses = document.getElementById('tabClasses');
-    const tabPrivate = document.getElementById('tabPrivate');
-    const tabSecurity = document.getElementById('tabSecurity');
-    const aboutTab = document.getElementById('aboutTab');
-    const classesTab = document.getElementById('classesTab');
-    const privateTab = document.getElementById('privateTab');
-    const securityTab = document.getElementById('securityTab');
+    const tabButtons = ['tabAbout', 'tabClasses', 'tabPrivate', 'tabSecurity', 'tabCalc'].map(id => document.getElementById(id));
+    const tabPanels = ['aboutTab', 'classesTab', 'privateTab', 'securityTab', 'calcTab'].map(id => document.getElementById(id));
 
     const HISTORY_KEY = 'ipInspectorHistory';
     const THEME_KEY = 'ipInspectorTheme';
     let lastInspection = null;
 
-    // Tab switching
-    function switchTab(activeTab, activeContent) {
-      [tabAbout, tabClasses, tabPrivate, tabSecurity].forEach(t => t.classList.remove('active'));
-      [aboutTab, classesTab, privateTab, securityTab].forEach(t => t.classList.remove('active'));
-      activeTab.classList.add('active');
-      activeContent.classList.add('active');
+    // Tab switching (ARIA tabs pattern: roving tabindex + arrow-key navigation)
+    function switchTab(index) {
+      tabButtons.forEach((btn, i) => {
+        const active = i === index;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        btn.tabIndex = active ? 0 : -1;
+        tabPanels[i].classList.toggle('active', active);
+      });
     }
 
-    tabAbout.addEventListener('click', () => switchTab(tabAbout, aboutTab));
-    tabClasses.addEventListener('click', () => switchTab(tabClasses, classesTab));
-    tabPrivate.addEventListener('click', () => switchTab(tabPrivate, privateTab));
-    tabSecurity.addEventListener('click', () => switchTab(tabSecurity, securityTab));
+    tabButtons.forEach((btn, i) => {
+      btn.addEventListener('click', () => switchTab(i));
+      btn.addEventListener('keydown', (e) => {
+        let target = null;
+        if (e.key === 'ArrowRight') target = (i + 1) % tabButtons.length;
+        else if (e.key === 'ArrowLeft') target = (i - 1 + tabButtons.length) % tabButtons.length;
+        else if (e.key === 'Home') target = 0;
+        else if (e.key === 'End') target = tabButtons.length - 1;
+        else return;
+        e.preventDefault();
+        tabButtons[target].focus();
+        switchTab(target);
+      });
+    });
 
     // ---------- Theme ----------
     function getStoredTheme() {
@@ -1409,6 +1489,102 @@
     checkBtn.addEventListener('click', performInspection);
     ipInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') performInspection();
+    });
+
+    // "Try it" example buttons in the Private Ranges guide
+    document.getElementById('privateTab').addEventListener('click', (e) => {
+      const btn = e.target.closest('.try-btn');
+      if (!btn) return;
+      ipInput.value = btn.getAttribute('data-ip');
+      performInspection();
+      resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    // ---------- Subnet / CIDR calculator ----------
+    function calculateSubnet(cidr) {
+      const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\s*\/\s*(\d{1,2})$/.exec(cidr.trim());
+      if (!match) throw new Error('Enter a valid CIDR, e.g. 192.168.1.0/24');
+
+      const octets = [1, 2, 3, 4].map(i => parseInt(match[i], 10));
+      if (octets.some(o => o < 0 || o > 255)) throw new Error('Octets must be between 0 and 255');
+
+      const prefix = parseInt(match[5], 10);
+      if (prefix < 0 || prefix > 32) throw new Error('Prefix must be between /0 and /32');
+
+      const ipInt = (octets[0] * 16777216) + (octets[1] * 65536) + (octets[2] * 256) + octets[3];
+      const maskInt = prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
+      const networkInt = (ipInt & maskInt) >>> 0;
+      const broadcastInt = (networkInt | (~maskInt >>> 0)) >>> 0;
+      const totalAddresses = Math.pow(2, 32 - prefix);
+      const usableHosts = prefix >= 31 ? totalAddresses : Math.max(totalAddresses - 2, 0);
+
+      const toIp = (n) => [24, 16, 8, 0].map(s => (n >>> s) & 255).join('.');
+
+      return {
+        prefix,
+        network: toIp(networkInt),
+        broadcast: toIp(broadcastInt),
+        mask: toIp(maskInt),
+        firstHost: prefix >= 31 ? toIp(networkInt) : toIp(networkInt + 1),
+        lastHost: prefix >= 31 ? toIp(broadcastInt) : toIp(broadcastInt - 1),
+        totalAddresses,
+        usableHosts
+      };
+    }
+
+    const cidrInput = document.getElementById('cidrInput');
+    const calcBtn = document.getElementById('calcBtn');
+    const calcResult = document.getElementById('calcResult');
+    const calcError = document.getElementById('calcError');
+
+    function runSubnetCalc() {
+      const value = cidrInput.value.trim();
+      calcResult.style.display = 'none';
+      calcError.style.display = 'none';
+      if (!value) return;
+
+      try {
+        const r = calculateSubnet(value);
+        calcResult.innerHTML = `
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">🏠 Network Address</div>
+              <div class="stat-value stat-value-small">${r.network}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">📡 Broadcast Address</div>
+              <div class="stat-value stat-value-small">${r.broadcast}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">🎭 Subnet Mask</div>
+              <div class="stat-value stat-value-small">${r.mask} (/${r.prefix})</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">👥 Usable Host Range</div>
+              <div class="stat-value stat-value-small">${r.firstHost} – ${r.lastHost}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">🔢 Total Addresses</div>
+              <div class="stat-value">${r.totalAddresses.toLocaleString()}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">✅ Usable Hosts</div>
+              <div class="stat-value">${r.usableHosts.toLocaleString()}</div>
+            </div>
+          </div>
+        `;
+        calcResult.style.display = 'block';
+        playEnterAnimation(calcResult);
+      } catch (err) {
+        calcError.innerHTML = `<div class="error-message">❌ ${escapeHtml(err.message)}</div>`;
+        calcError.style.display = 'block';
+        playEnterAnimation(calcError);
+      }
+    }
+
+    calcBtn.addEventListener('click', runSubnetCalc);
+    cidrInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') runSubnetCalc();
     });
 
     // Keyboard shortcuts: "/" focuses input, "Escape" clears it
