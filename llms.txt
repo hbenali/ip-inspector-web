@@ -1,0 +1,8 @@
+# IP Inspector
+
+> Free, single-page IP lookup tool — geolocation, ISP/ASN, reverse DNS, and VPN/proxy/Tor detection for any IPv4/IPv6 address or domain.
+
+Static site (no backend, no build step, no dependencies) at https://ip.hbenali.ovh — a single `index.html` calling public APIs directly from the browser. Shows your own public IP on load, resolves domains via DNS-over-HTTPS, includes an interactive map for the resolved location and a subnet/CIDR calculator, and keeps a local (browser-only) history of recent lookups.
+
+## Pages
+- [IP Inspector](https://ip.hbenali.ovh/): the tool itself.
