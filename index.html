@@ -33,6 +33,11 @@
   <link rel="alternate icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <meta name="theme-color" content="#3498db">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="IP Inspector">
 
   <!-- api.ipify.org is fetched immediately on load; the rest are only hit on-demand after a search -->
   <link rel="preconnect" href="https://api.ipify.org">
@@ -1918,6 +1923,10 @@
     showPlaceholder();
     initSnow();
   })();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
 </script>
 </body>
 </html>

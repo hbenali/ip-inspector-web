@@ -1,0 +1,15 @@
+{
+  "name": "IP Inspector — Free IP Lookup, Geolocation & VPN Detection",
+  "short_name": "IP Inspector",
+  "description": "Look up any IPv4/IPv6 address or domain for geolocation, ISP, ASN, and VPN/proxy/Tor detection.",
+  "start_url": ".",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#e8f4fc",
+  "theme_color": "#3498db",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
