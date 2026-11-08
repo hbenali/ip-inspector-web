@@ -32,7 +32,9 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <meta name="theme-color" content="#0c1218">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0c1218" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="/manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -992,8 +994,9 @@
 
       function tick() {
         ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = 'rgba(231, 225, 211, 0.85)';
-        ctx.strokeStyle = 'rgba(142, 154, 166, 0.4)';
+        const tokens = getComputedStyle(canvas);
+        ctx.fillStyle = tokens.getPropertyValue('--snow-fill').trim();
+        ctx.strokeStyle = tokens.getPropertyValue('--snow-edge').trim();
         ctx.lineWidth = 0.6;
         flakes.forEach(f => {
           f.y += f.speed;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ip-inspector-v2';
+const CACHE_NAME = 'ip-inspector-v3';
 const PRECACHE_URLS = [
   '/',
   '/index.html',
