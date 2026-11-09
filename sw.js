@@ -1,9 +1,10 @@
-const CACHE_NAME = 'ip-inspector-v3';
+const CACHE_NAME = 'ip-inspector-v4';
 const PRECACHE_URLS = [
   '/',
   '/index.html',
   '/404.html',
   '/site.css',
+  '/theme.js',
   '/404.js',
   '/fonts/big-shoulders-latin-wght.woff2',
   '/fonts/newsreader-latin-wght.woff2',
